@@ -8,24 +8,80 @@ import { countries, type Country } from '@/lib/countries';
 import { cn } from '@/lib/utils';
 import { Award, RefreshCw } from 'lucide-react';
 
-// Helper function to shuffle an array
 const shuffleArray = <T,>(array: T[]): T[] => {
   return array.map(value => ({ value, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
     .map(({ value }) => value);
 };
 
+const GAME_STATE_KEY = 'flagFrenzyGameState';
+
+type GameState = {
+  gameCountries: Country[];
+  currentCountry: Country | null;
+  options: Country[];
+  score: number;
+  mistakes: number;
+  status: 'playing' | 'correct' | 'incorrect' | 'finished';
+};
+
 export default function FlagFrenzyGame() {
-  const [gameCountries, setGameCountries] = useState<Country[]>([]);
-  const [currentCountry, setCurrentCountry] = useState<Country | null>(null);
-  const [options, setOptions] = useState<Country[]>([]);
-  const [score, setScore] = useState(0);
-  const [mistakes, setMistakes] = useState(0);
-  const [status, setStatus] = useState<'playing' | 'correct' | 'incorrect' | 'finished'>('playing');
+  const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedOption, setSelectedOption] = useState<Country | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const totalFlags = useMemo(() => countries.length, []);
+
+  const startGame = useCallback((state?: GameState | null) => {
+    if (state) {
+      setGameState(state);
+    } else {
+      const shuffled = shuffleArray([...countries]);
+      const nextCountry = shuffled[0];
+      const otherCountries = countries.filter(c => c.code !== nextCountry.code);
+      const wrongOptions = shuffleArray(otherCountries).slice(0, 3);
+      const newOptions = shuffleArray([nextCountry, ...wrongOptions]);
+
+      setGameState({
+        gameCountries: shuffled.slice(1),
+        currentCountry: nextCountry,
+        options: newOptions,
+        score: 0,
+        mistakes: 0,
+        status: 'playing',
+      });
+    }
+    setSelectedOption(null);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const savedStateJSON = localStorage.getItem(GAME_STATE_KEY);
+      if (savedStateJSON) {
+        const savedState = JSON.parse(savedStateJSON) as GameState;
+        if (savedState.status !== 'finished') {
+          startGame(savedState);
+        } else {
+          startGame();
+        }
+      } else {
+        startGame();
+      }
+    } catch (error) {
+      console.error("Failed to load game state from localStorage", error);
+      startGame();
+    }
+  }, [startGame]);
+
+  useEffect(() => {
+    if (gameState) {
+      try {
+        localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+      } catch (error) {
+        console.error("Failed to save game state to localStorage", error);
+      }
+    }
+  }, [gameState]);
 
   const pickNextCountry = useCallback((remainingCountries: Country[]) => {
     if (remainingCountries.length > 0) {
@@ -34,54 +90,58 @@ export default function FlagFrenzyGame() {
       const wrongOptions = shuffleArray(otherCountries).slice(0, 3);
       const newOptions = shuffleArray([nextCountry, ...wrongOptions]);
 
-      setCurrentCountry(nextCountry);
-      setOptions(newOptions);
-      setGameCountries(remainingCountries.slice(1));
-      setStatus('playing');
+      setGameState(prev => prev ? {
+        ...prev,
+        currentCountry: nextCountry,
+        options: newOptions,
+        gameCountries: remainingCountries.slice(1),
+        status: 'playing',
+      } : null);
       setSelectedOption(null);
     } else {
-      setStatus('finished');
+      setGameState(prev => prev ? { ...prev, status: 'finished' } : null);
     }
   }, []);
 
-  useEffect(() => {
-    const shuffled = shuffleArray([...countries]);
-    setGameCountries(shuffled);
-    pickNextCountry(shuffled);
-  }, [pickNextCountry]);
-
   const handleOptionClick = (option: Country) => {
-    if (status !== 'playing') return;
+    if (!gameState || gameState.status !== 'playing') return;
 
     setSelectedOption(option);
 
-    if (option.code === currentCountry?.code) {
-      setStatus('correct');
-      setScore(prev => prev + 1);
+    if (option.code === gameState.currentCountry?.code) {
+      setGameState(prev => prev ? { ...prev, status: 'correct', score: prev.score + 1 } : null);
       setShowConfetti(true);
       setTimeout(() => {
-        pickNextCountry(gameCountries);
+        pickNextCountry(gameState.gameCountries);
         setShowConfetti(false);
       }, 2000);
     } else {
-      setStatus('incorrect');
-      setMistakes(prev => prev + 1);
+      setGameState(prev => prev ? { ...prev, status: 'incorrect', mistakes: prev.mistakes + 1 } : null);
       setTimeout(() => {
-        pickNextCountry(gameCountries);
+        pickNextCountry(gameState.gameCountries);
       }, 2000);
     }
   };
   
   const handleRestart = () => {
-    const shuffled = shuffleArray([...countries]);
-    setGameCountries(shuffled);
-    setScore(0);
-    setMistakes(0);
-    setCurrentCountry(null); 
-    setStatus('playing');
-    pickNextCountry(shuffled);
+    localStorage.removeItem(GAME_STATE_KEY);
+    startGame();
   };
 
+  if (!gameState) {
+    return (
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader>
+          <CardTitle className="font-headline text-3xl">Flag Frenzy</CardTitle>
+        </CardHeader>
+        <CardContent className="flex h-64 items-center justify-center">
+          <RefreshCw className="h-12 w-12 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { score, mistakes, status, currentCountry, options } = gameState;
   const remainingFlags = totalFlags - score - mistakes;
 
   if (status === 'finished') {
@@ -180,12 +240,15 @@ export default function FlagFrenzyGame() {
         <div className="text-sm text-muted-foreground">Punkte: <span className="font-bold text-foreground">{score}</span></div>
         <div className="text-sm text-muted-foreground">Fehler: <span className="font-bold text-destructive">{mistakes}</span></div>
         <div className="text-sm text-muted-foreground">Verbleibend: <span className="font-bold text-foreground">{remainingFlags} / {totalFlags}</span></div>
+        <Button variant="ghost" size="sm" onClick={handleRestart}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reset
+        </Button>
       </CardFooter>
     </Card>
   );
 }
 
-// A simple confetti component for celebration
 const Confetti = () => {
     const confettiCount = 100;
     const confetti = useMemo(() => {

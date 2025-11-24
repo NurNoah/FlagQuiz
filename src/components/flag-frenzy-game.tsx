@@ -132,7 +132,7 @@ export default function FlagFrenzyGame() {
         <CardDescription className="text-lg">Welche Flagge ist das?</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">
-        <div className="relative h-48 w-full">
+        <div className="relative h-48 w-full flex justify-center mb-4">
             <Image
               src={`https://flagcdn.com/w320/${currentCountry.code}.png`}
               alt="Länderflagge"
@@ -147,7 +147,7 @@ export default function FlagFrenzyGame() {
             />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 w-full">
+        <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
           {options.map((option) => (
             <Button
               key={option.code}
@@ -156,7 +156,7 @@ export default function FlagFrenzyGame() {
               onClick={() => handleOptionClick(option)}
               disabled={status !== 'playing'}
               className={cn(
-                "h-auto min-h-16 py-2 justify-center text-center leading-tight whitespace-normal",
+                "h-auto min-h-14 py-2 justify-center text-center leading-tight whitespace-normal",
                 status !== 'playing' && option.code !== currentCountry.code && 'opacity-50'
               )}
             >

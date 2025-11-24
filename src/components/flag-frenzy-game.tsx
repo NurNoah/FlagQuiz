@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { countries, type Country } from '@/lib/countries';
 import { cn } from '@/lib/utils';
 import { Award, RefreshCw } from 'lucide-react';
+import { ModeToggle } from '@/components/mode-toggle';
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   return array.map(value => ({ value, sort: Math.random() }))
@@ -147,7 +148,10 @@ export default function FlagFrenzyGame() {
   if (status === 'finished') {
     return (
         <Card className="w-full max-w-md text-center shadow-2xl">
-            <CardHeader>
+            <CardHeader className="relative">
+                <div className="absolute top-4 right-4">
+                    <ModeToggle />
+                </div>
                 <CardTitle className="font-headline text-3xl">Spiel beendet!</CardTitle>
                 <CardDescription>Gut gemacht!</CardDescription>
             </CardHeader>
@@ -191,7 +195,10 @@ export default function FlagFrenzyGame() {
   return (
     <Card className="w-full max-w-md overflow-hidden shadow-2xl transition-all duration-500">
       {showConfetti && <Confetti />}
-      <CardHeader className="text-center">
+      <CardHeader className="text-center relative">
+        <div className="absolute top-4 right-4">
+          <ModeToggle />
+        </div>
         <CardTitle className="font-headline text-4xl text-primary">Flag Frenzy</CardTitle>
         <CardDescription className="text-lg">Welche Flagge ist das?</CardDescription>
       </CardHeader>

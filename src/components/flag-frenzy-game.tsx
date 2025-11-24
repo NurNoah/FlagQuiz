@@ -133,7 +133,7 @@ export default function FlagFrenzyGame() {
     return (
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader>
-          <CardTitle className="font-headline text-3xl">Flag Frenzy</CardTitle>
+          <CardTitle className="font-headline text-3xl">Flaggen Quiz</CardTitle>
         </CardHeader>
         <CardContent className="flex h-64 items-center justify-center">
           <RefreshCw className="h-12 w-12 animate-spin text-primary" />
@@ -174,7 +174,7 @@ export default function FlagFrenzyGame() {
     return (
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader>
-          <CardTitle className="font-headline text-3xl">Flag Frenzy</CardTitle>
+          <CardTitle className="font-headline text-3xl">Flaggen Quiz</CardTitle>
         </CardHeader>
         <CardContent className="flex h-64 items-center justify-center">
           <RefreshCw className="h-12 w-12 animate-spin text-primary" />
@@ -199,7 +199,7 @@ export default function FlagFrenzyGame() {
         <div className="absolute top-4 right-4">
           <ModeToggle />
         </div>
-        <CardTitle className="font-headline text-4xl text-primary">Flag Frenzy</CardTitle>
+        <CardTitle className="font-headline text-4xl text-primary">Flaggen Quiz</CardTitle>
         <CardDescription className="text-lg">Welche Flagge ist das?</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">

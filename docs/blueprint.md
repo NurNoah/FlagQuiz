@@ -1,4 +1,4 @@
-# **App Name**: Flag Frenzy
+# **App Name**: Flaggen Quiz
 
 ## Core Features:
 

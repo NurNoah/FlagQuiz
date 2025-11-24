@@ -4,18 +4,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { countries, type Country } from '@/lib/countries';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { Award, RefreshCw } from 'lucide-react';
-
-const formSchema = z.object({
-  guess: z.string().min(1, { message: 'Bitte gib einen Namen ein.' }),
-});
 
 // Helper function to shuffle an array
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -27,72 +18,68 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export default function FlagFrenzyGame() {
   const [gameCountries, setGameCountries] = useState<Country[]>([]);
   const [currentCountry, setCurrentCountry] = useState<Country | null>(null);
+  const [options, setOptions] = useState<Country[]>([]);
   const [score, setScore] = useState(0);
-  const [status, setStatus] = useState<'playing' | 'correct' | 'incorrect-skip' | 'finished'>('playing');
+  const [status, setStatus] = useState<'playing' | 'correct' | 'incorrect' | 'finished'>('playing');
+  const [selectedOption, setSelectedOption] = useState<Country | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      guess: '',
-    },
-  });
-
-  const remainingFlags = gameCountries.length;
   const totalFlags = useMemo(() => countries.length, []);
 
-  const pickNextCountry = useCallback(() => {
-    if (gameCountries.length > 0) {
-      const nextCountry = gameCountries[0];
+  const pickNextCountry = useCallback((remainingCountries: Country[]) => {
+    if (remainingCountries.length > 0) {
+      const nextCountry = remainingCountries[0];
+      const otherCountries = countries.filter(c => c.code !== nextCountry.code);
+      const wrongOptions = shuffleArray(otherCountries).slice(0, 3);
+      const newOptions = shuffleArray([nextCountry, ...wrongOptions]);
+
       setCurrentCountry(nextCountry);
-      setGameCountries(prev => prev.slice(1));
+      setOptions(newOptions);
+      setGameCountries(remainingCountries.slice(1));
       setStatus('playing');
-      form.reset();
+      setSelectedOption(null);
     } else {
       setStatus('finished');
     }
-  }, [gameCountries, form]);
-
-  useEffect(() => {
-    setGameCountries(shuffleArray([...countries]));
   }, []);
 
   useEffect(() => {
-    if (gameCountries.length > 0 && !currentCountry) {
-      pickNextCountry();
-    }
-  }, [gameCountries, currentCountry, pickNextCountry]);
+    const shuffled = shuffleArray([...countries]);
+    setGameCountries(shuffled);
+    pickNextCountry(shuffled);
+  }, [pickNextCountry]);
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!currentCountry || status !== 'playing') return;
+  const handleOptionClick = (option: Country) => {
+    if (status !== 'playing') return;
 
-    if (values.guess.trim().toLowerCase() === currentCountry.name.toLowerCase()) {
+    setSelectedOption(option);
+
+    if (option.code === currentCountry?.code) {
       setStatus('correct');
       setScore(prev => prev + 1);
       setShowConfetti(true);
       setTimeout(() => {
-        pickNextCountry();
+        pickNextCountry(gameCountries);
         setShowConfetti(false);
       }, 2000);
     } else {
-      form.setError('guess', { type: 'manual', message: 'Falsch! Versuche es erneut.' });
+      setStatus('incorrect');
+      setTimeout(() => {
+        pickNextCountry(gameCountries);
+      }, 2000);
     }
-  };
-
-  const handleSkip = () => {
-    if (status !== 'playing') return;
-    setStatus('incorrect-skip');
-    setTimeout(() => {
-      pickNextCountry();
-    }, 2000);
   };
   
   const handleRestart = () => {
-    setGameCountries(shuffleArray([...countries]));
+    const shuffled = shuffleArray([...countries]);
+    setGameCountries(shuffled);
     setScore(0);
-    setCurrentCountry(null); // This will trigger the useEffect to pick a new country
+    setCurrentCountry(null); 
     setStatus('playing');
+    pickNextCountry(shuffled);
   };
+
+  const remainingFlags = gameCountries.length + (status === 'finished' || status === 'playing' ? 0 : 1);
 
   if (status === 'finished') {
     return (
@@ -127,18 +114,22 @@ export default function FlagFrenzyGame() {
       </Card>
     );
   }
+  
+  const getButtonVariant = (option: Country) => {
+    if (status === 'playing') return 'outline';
+    if (option.code === currentCountry.code) return 'default';
+    if (option.code === selectedOption?.code) return 'destructive';
+    return 'outline';
+  };
 
-  const feedbackClasses = cn({
-    'border-green-500 bg-green-50 text-green-700': status === 'correct',
-    'border-red-500 bg-red-50 text-red-700': status === 'incorrect-skip',
-  });
+  const showFeedback = status === 'correct' || status === 'incorrect';
 
   return (
     <Card className="w-full max-w-md overflow-hidden shadow-2xl transition-all duration-500">
       {showConfetti && <Confetti />}
       <CardHeader className="text-center">
         <CardTitle className="font-headline text-4xl text-primary">Flag Frenzy</CardTitle>
-        <CardDescription className="text-lg">Errate die Flagge!</CardDescription>
+        <CardDescription className="text-lg">Welche Flagge ist das?</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">
         <div className="relative h-48 w-full">
@@ -149,45 +140,36 @@ export default function FlagFrenzyGame() {
               height={192}
               className={cn(
                 "rounded-lg border-4 border-card object-contain shadow-lg transition-all duration-300",
-                status === 'correct' && 'scale-105 border-accent',
-                status === 'incorrect-skip' && 'opacity-50'
+                status === 'correct' && 'scale-105 border-green-500',
+                status === 'incorrect' && 'border-red-500'
               )}
               unoptimized
             />
         </div>
 
-        {status === 'correct' || status === 'incorrect-skip' ? (
-          <div className={cn("flex h-24 flex-col items-center justify-center rounded-lg border-2 p-4 text-center text-lg font-semibold", feedbackClasses)}>
-             {status === 'correct' && <><span className="text-2xl">🎉</span> Richtig!</>}
-             {status === 'incorrect-skip' && <>Die richtige Antwort war: <span className="font-bold">{currentCountry.name}</span></>}
+        <div className="grid grid-cols-2 gap-4 w-full">
+          {options.map((option) => (
+            <Button
+              key={option.code}
+              variant={getButtonVariant(option)}
+              size="lg"
+              onClick={() => handleOptionClick(option)}
+              disabled={status !== 'playing'}
+              className={cn(
+                "h-auto min-h-16 py-2 justify-center text-center leading-tight whitespace-normal",
+                status !== 'playing' && option.code !== currentCountry.code && 'opacity-50'
+              )}
+            >
+              {option.name}
+            </Button>
+          ))}
+        </div>
+
+        {showFeedback && (
+          <div className="flex h-12 items-center justify-center text-center text-lg font-semibold">
+            {status === 'correct' && <span className="text-green-500">🎉 Richtig!</span>}
+            {status === 'incorrect' && <span className="text-red-500">Falsch! Die richtige Antwort war {currentCountry.name}.</span>}
           </div>
-        ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-4">
-              <FormField
-                control={form.control}
-                name="guess"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        placeholder="Land eingeben..."
-                        {...field}
-                        className="text-center text-lg h-12"
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1" size="lg">Raten</Button>
-                <Button type="button" variant="outline" size="lg" onClick={handleSkip}>Überspringen</Button>
-              </div>
-            </form>
-          </Form>
         )}
       </CardContent>
       <CardFooter className="flex justify-between items-center bg-secondary/50 p-4">

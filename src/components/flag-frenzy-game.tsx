@@ -203,7 +203,7 @@ export default function FlagFrenzyGame() {
         <CardDescription className="text-lg">Welche Flagge ist das?</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">
-        <div className="relative h-48 w-full flex justify-center mb-4">
+        <div className="relative h-48 w-full flex justify-center mb-0">
             <Image
               src={`https://flagcdn.com/w320/${currentCountry.code}.png`}
               alt="Länderflagge"
@@ -216,6 +216,15 @@ export default function FlagFrenzyGame() {
               )}
               unoptimized
             />
+        </div>
+
+        <div className="flex h-12 items-center justify-center text-center text-lg font-semibold">
+          {showFeedback ? (
+            <>
+              {status === 'correct' && <span className="text-green-500">🎉 Richtig!</span>}
+              {status === 'incorrect' && <span className="text-red-500">Falsch! Die richtige Antwort war {currentCountry.name}.</span>}
+            </>
+          ) : null}
         </div>
 
         <div className="grid w-full max-w-sm grid-cols-1 gap-3">
@@ -235,13 +244,6 @@ export default function FlagFrenzyGame() {
             </Button>
           ))}
         </div>
-
-        {showFeedback && (
-          <div className="flex h-12 items-center justify-center text-center text-lg font-semibold">
-            {status === 'correct' && <span className="text-green-500">🎉 Richtig!</span>}
-            {status === 'incorrect' && <span className="text-red-500">Falsch! Die richtige Antwort war {currentCountry.name}.</span>}
-          </div>
-        )}
       </CardContent>
       <CardFooter className="flex justify-between items-center bg-secondary/50 p-4">
         <div className="text-sm text-muted-foreground">Punkte: <span className="font-bold text-foreground">{score}</span></div>

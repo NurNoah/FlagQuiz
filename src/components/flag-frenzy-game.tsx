@@ -20,6 +20,7 @@ export default function FlagFrenzyGame() {
   const [currentCountry, setCurrentCountry] = useState<Country | null>(null);
   const [options, setOptions] = useState<Country[]>([]);
   const [score, setScore] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
   const [status, setStatus] = useState<'playing' | 'correct' | 'incorrect' | 'finished'>('playing');
   const [selectedOption, setSelectedOption] = useState<Country | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -64,6 +65,7 @@ export default function FlagFrenzyGame() {
       }, 2000);
     } else {
       setStatus('incorrect');
+      setMistakes(prev => prev + 1);
       setTimeout(() => {
         pickNextCountry(gameCountries);
       }, 2000);
@@ -74,12 +76,13 @@ export default function FlagFrenzyGame() {
     const shuffled = shuffleArray([...countries]);
     setGameCountries(shuffled);
     setScore(0);
+    setMistakes(0);
     setCurrentCountry(null); 
     setStatus('playing');
     pickNextCountry(shuffled);
   };
 
-  const remainingFlags = gameCountries.length + (status === 'finished' || status === 'playing' ? 0 : 1);
+  const remainingFlags = totalFlags - score - mistakes;
 
   if (status === 'finished') {
     return (
@@ -91,6 +94,7 @@ export default function FlagFrenzyGame() {
             <CardContent className="flex flex-col items-center gap-4">
                 <Award className="h-24 w-24 text-primary" />
                 <p className="text-xl">Deine Punktzahl: <span className="font-bold text-accent">{score} / {totalFlags}</span></p>
+                <p className="text-lg">Fehler: <span className="font-bold text-destructive">{mistakes}</span></p>
             </CardContent>
             <CardFooter className="flex justify-center">
                 <Button onClick={handleRestart}>
@@ -147,7 +151,7 @@ export default function FlagFrenzyGame() {
             />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
+        <div className="grid w-full max-w-sm grid-cols-1 gap-3">
           {options.map((option) => (
             <Button
               key={option.code}
@@ -174,6 +178,7 @@ export default function FlagFrenzyGame() {
       </CardContent>
       <CardFooter className="flex justify-between items-center bg-secondary/50 p-4">
         <div className="text-sm text-muted-foreground">Punkte: <span className="font-bold text-foreground">{score}</span></div>
+        <div className="text-sm text-muted-foreground">Fehler: <span className="font-bold text-destructive">{mistakes}</span></div>
         <div className="text-sm text-muted-foreground">Verbleibend: <span className="font-bold text-foreground">{remainingFlags} / {totalFlags}</span></div>
       </CardFooter>
     </Card>

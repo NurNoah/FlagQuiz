@@ -8,6 +8,8 @@ import { countries, type Country } from '@/lib/countries';
 import { cn } from '@/lib/utils';
 import { Award, RefreshCw } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   return array.map(value => ({ value, sort: Math.random() }))
@@ -24,6 +26,9 @@ type GameState = {
   score: number;
   mistakes: number;
   status: 'playing' | 'correct' | 'incorrect' | 'finished';
+  streak: number;
+  longestStreak: number;
+  wrongAnswers: Country[];
 };
 
 export default function FlagFrenzyGame() {
@@ -50,6 +55,9 @@ export default function FlagFrenzyGame() {
         score: 0,
         mistakes: 0,
         status: 'playing',
+        streak: 0,
+        longestStreak: 0,
+        wrongAnswers: [],
       });
     }
     setSelectedOption(null);
@@ -61,7 +69,14 @@ export default function FlagFrenzyGame() {
       if (savedStateJSON) {
         const savedState = JSON.parse(savedStateJSON) as GameState;
         if (savedState.status !== 'finished') {
-          startGame(savedState);
+          // ensure new fields are initialized
+          const initialState = {
+            streak: 0,
+            longestStreak: 0,
+            wrongAnswers: [],
+            ...savedState
+          };
+          startGame(initialState);
         } else {
           startGame();
         }
@@ -110,14 +125,30 @@ export default function FlagFrenzyGame() {
     setSelectedOption(option);
 
     if (option.code === gameState.currentCountry?.code) {
-      setGameState(prev => prev ? { ...prev, status: 'correct', score: prev.score + 1 } : null);
+      const newStreak = gameState.streak + 1;
+      setGameState(prev => prev ? { 
+        ...prev, 
+        status: 'correct', 
+        score: prev.score + 1,
+        streak: newStreak,
+        longestStreak: Math.max(prev.longestStreak, newStreak),
+      } : null);
       setShowConfetti(true);
       setTimeout(() => {
         pickNextCountry(gameState.gameCountries);
         setShowConfetti(false);
       }, 2000);
     } else {
-      setGameState(prev => prev ? { ...prev, status: 'incorrect', mistakes: prev.mistakes + 1 } : null);
+      setGameState(prev => {
+        if (!prev || !prev.currentCountry) return null;
+        return { 
+          ...prev, 
+          status: 'incorrect', 
+          mistakes: prev.mistakes + 1,
+          streak: 0,
+          wrongAnswers: [...prev.wrongAnswers, prev.currentCountry],
+        }
+      });
       setTimeout(() => {
         pickNextCountry(gameState.gameCountries);
       }, 2000);
@@ -142,7 +173,7 @@ export default function FlagFrenzyGame() {
     );
   }
 
-  const { score, mistakes, status, currentCountry, options } = gameState;
+  const { score, mistakes, status, currentCountry, options, longestStreak, wrongAnswers } = gameState;
   const remainingFlags = totalFlags - score - mistakes;
 
   if (status === 'finished') {
@@ -159,8 +190,37 @@ export default function FlagFrenzyGame() {
                 <Award className="h-24 w-24 text-primary" />
                 <p className="text-xl">Deine Punktzahl: <span className="font-bold text-accent">{score} / {totalFlags}</span></p>
                 <p className="text-lg">Fehler: <span className="font-bold text-destructive">{mistakes}</span></p>
+                <p className="text-lg">Längste Serie: <span className="font-bold text-accent">{longestStreak}</span></p>
             </CardContent>
-            <CardFooter className="flex justify-center">
+            <CardFooter className="flex-col gap-4 justify-center">
+                {wrongAnswers.length > 0 && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Falsche Antworten ansehen</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Falsche Antworten</DialogTitle>
+                      </DialogHeader>
+                      <ScrollArea className="h-72 w-full rounded-md border">
+                        <div className="p-4">
+                          {wrongAnswers.map(country => (
+                            <div key={country.code} className="flex items-center gap-4 mb-4">
+                              <Image 
+                                src={`https://flagcdn.com/w80/${country.code}.png`}
+                                alt={country.name}
+                                width={80}
+                                height={48}
+                                className="rounded-md border"
+                              />
+                              <span className="font-medium">{country.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                )}
                 <Button onClick={handleRestart}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Nochmal spielen
@@ -211,6 +271,7 @@ export default function FlagFrenzyGame() {
               height={192}
               className={cn(
                 "rounded-lg border-4 shadow-lg transition-all duration-300 max-h-full w-auto",
+                "object-contain",
                 status === 'playing' && 'border-card',
                 status === 'correct' && 'scale-105 border-green-500',
                 status === 'incorrect' && 'border-red-500'

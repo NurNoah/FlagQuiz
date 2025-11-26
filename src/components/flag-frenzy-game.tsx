@@ -203,14 +203,15 @@ export default function FlagFrenzyGame() {
         <CardDescription className="text-lg">Welche Flagge ist das?</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">
-        <div className="relative h-48 w-full flex justify-center mb-0">
+        <div className="relative h-48 w-full flex justify-center items-center">
             <Image
               src={`https://flagcdn.com/w320/${currentCountry.code}.png`}
               alt="Länderflagge"
               width={320}
               height={192}
               className={cn(
-                "rounded-lg border-4 border-card object-contain shadow-lg transition-all duration-300",
+                "rounded-lg border-4 shadow-lg transition-all duration-300 max-h-full w-auto",
+                status === 'playing' && 'border-card',
                 status === 'correct' && 'scale-105 border-green-500',
                 status === 'incorrect' && 'border-red-500'
               )}
